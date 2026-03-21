@@ -1,0 +1,12 @@
+project:
+  type: default
+  output-dir: .
+
+format:
+  gfm:
+    toc: true
+    toc-depth: 3
+
+execute:
+  enabled: true
+  echo: true

@@ -1,13 +1,26 @@
 [project]
 name = "kalshi-trades"
-version = "0.1.0"
+version = "0.2.0"
+description = "Python package for the Kalshi prediction-market REST API and WebSocket streaming."
 requires-python = ">= 3.13"
 dependencies = [
     "cryptography>=46.0.5",
-    "nbformat>=5.10.4",
-    "plotly>=6.6.0",
-    "pykalshi[dataframe,web]>=0.5.0",
+    "nbclient>=0.10.4",
     "python-dotenv>=1.2.2",
+    "pyyaml>=6.0.3",
     "requests>=2.32.5",
     "websockets>=16.0",
 ]
+
+[project.optional-dependencies]
+# Extras from the original setup that aren't needed by the core package
+viz = ["plotly>=6.6.0"]
+sdk = ["pykalshi[dataframe,web]>=0.5.0"]
+notebook = ["nbformat>=5.10.4"]
+all = ["kalshi-trades[viz,sdk,notebook]"]
+
+[tool.setuptools.packages.find]
+include = ["kalshi_trades*"]
+
+[project.scripts]
+kalshi-watch = "kalshi_trades.watcher:main"

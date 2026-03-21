@@ -1,7 +1,47 @@
+# Compiled Python
 *.pyc
 *.pyo
-__pycache__/
+**/__pycache__/
 
-*.env
+# macOS
+.DS_Store
+
+# Secrets
+.env
+.env*
+!.env.example
 *.pem
 *.key
+*.p8
+*_private_key*
+
+# Quarto
+.quarto/
+**/*.quarto_ipynb
+
+# Build / packaging artifacts
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+
+# uv
+uv.lock
+.uv/
+
+# IDE
+.vscode/
+.idea/
+
+# Jupyter
+**/.ipynb_checkpoints/
+
+# Legacy / scratch files (kept locally, not part of the package)
+examples/
+web/
+march_analyzer.py
+order_book.py
+watcher.py
