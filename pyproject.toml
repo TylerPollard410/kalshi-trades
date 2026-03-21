@@ -1,0 +1,13 @@
+[project]
+name = "kalshi-trades"
+version = "0.1.0"
+requires-python = ">= 3.13"
+dependencies = [
+    "cryptography>=46.0.5",
+    "nbformat>=5.10.4",
+    "plotly>=6.6.0",
+    "pykalshi[dataframe,web]>=0.5.0",
+    "python-dotenv>=1.2.2",
+    "requests>=2.32.5",
+    "websockets>=16.0",
+]
