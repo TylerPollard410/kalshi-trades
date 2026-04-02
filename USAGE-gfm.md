@@ -1,5 +1,28 @@
-# Usage Guide
 
+
+- [Usage Guide](#usage-guide)
+  - [Installation](#installation)
+  - [Quick Start](#quick-start)
+    - [1. Configuration](#1-configuration)
+    - [2. REST Client – Market Data (no auth
+      required)](#2-rest-client--market-data-no-auth-required)
+    - [3. REST Client – Authenticated
+      Endpoints](#3-rest-client--authenticated-endpoints)
+    - [4. Placing / Managing Orders](#4-placing--managing-orders)
+    - [5. WebSocket Streaming](#5-websocket-streaming)
+    - [6. Subscribing to Multiple
+      Markets](#6-subscribing-to-multiple-markets)
+    - [7. Private Channels (fills,
+      positions)](#7-private-channels-fills-positions)
+    - [8. Updating Subscriptions
+      Dynamically](#8-updating-subscriptions-dynamically)
+    - [9. Seeding OrderBook from REST before
+      WebSocket](#9-seeding-orderbook-from-rest-before-websocket)
+  - [CLI – Live Order Book Watcher](#cli--live-order-book-watcher)
+  - [Historical Data](#historical-data)
+  - [Models Reference](#models-reference)
+
+# Usage Guide
 
 - [Installation](#installation)
 - [Quick Start](#quick-start)
@@ -18,11 +41,6 @@
     Dynamically](#8-updating-subscriptions-dynamically)
   - [9. Seeding OrderBook from REST before
     WebSocket](#9-seeding-orderbook-from-rest-before-websocket)
-- [Strategy Loop](#strategy-loop)
-  - [Running from the command line](#running-from-the-command-line)
-  - [Using `Strategy` in a script or
-    notebook](#using-strategy-in-a-script-or-notebook)
-  - [Signal logic](#signal-logic)
 - [CLI – Live Order Book Watcher](#cli--live-order-book-watcher)
 - [Historical Data](#historical-data)
 - [Models Reference](#models-reference)
@@ -34,8 +52,7 @@ streaming, and the live order-book CLI.
 
 ## Installation
 
-``` {bash}
-#| label: install
+``` bash
 # From the repo root (editable install)
 uv pip install -e .
 
@@ -82,7 +99,7 @@ config = Config(
 ``` python
 from kalshi_trades import Config, KalshiClient
 
-client = KalshiClient(Config(env="demo"))
+client = KalshiClient(Config(env="prod"))
 ```
 
 #### Using a predefined ticker
@@ -97,7 +114,7 @@ EXAMPLE_SERIES = "KXBTC"
 EXAMPLE_TICKER
 ```
 
-    'KXBTC-26APR0217-T78249.99'
+    'KXBTC-26MAR2106-T80199.99'
 
 #### Single market detail
 
@@ -107,24 +124,24 @@ market
 ```
 
     {'market': {'can_close_early': True,
-      'close_time': '2026-04-02T21:00:00Z',
-      'created_time': '2026-04-01T10:57:37.416773Z',
-      'event_ticker': 'KXBTC-26APR0217',
-      'expected_expiration_time': '2026-04-02T21:05:00Z',
-      'expiration_time': '2026-04-09T21:00:00Z',
+      'close_time': '2026-03-21T10:00:00Z',
+      'created_time': '2026-03-20T09:01:57.529868Z',
+      'event_ticker': 'KXBTC-26MAR2106',
+      'expected_expiration_time': '2026-03-21T10:05:00Z',
+      'expiration_time': '2026-03-28T10:00:00Z',
       'expiration_value': '',
-      'floor_strike': 78249.99,
+      'floor_strike': 80199.99,
       'fractional_trading_enabled': False,
       'last_price_dollars': '0.0000',
-      'latest_expiration_time': '2026-04-09T21:00:00Z',
+      'latest_expiration_time': '2026-03-28T10:00:00Z',
       'liquidity_dollars': '0.0000',
       'market_type': 'binary',
       'no_ask_dollars': '1.0000',
-      'no_bid_dollars': '1.0000',
-      'no_sub_title': '$78,250 or above',
+      'no_bid_dollars': '0.9900',
+      'no_sub_title': '$80,200 or above',
       'notional_value_dollars': '1.0000',
       'open_interest_fp': '0.00',
-      'open_time': '2026-04-01T11:24:49Z',
+      'open_time': '2026-03-21T09:00:00Z',
       'previous_price_dollars': '0.0000',
       'previous_yes_ask_dollars': '0.0000',
       'previous_yes_bid_dollars': '0.0000',
@@ -132,23 +149,23 @@ market
       'price_ranges': [{'end': '1.0000', 'start': '0.0000', 'step': '0.0100'}],
       'response_price_units': 'usd_cent',
       'result': '',
-      'rules_primary': "If the simple average of the sixty seconds of CF Benchmarks' Bitcoin Real-Time Index (BRTI) before 5 PM EDT is above 78249.99 at 5 PM EDT on Apr 2, 2026, then the market resolves to Yes.",
+      'rules_primary': "If the simple average of the sixty seconds of CF Benchmarks' Bitcoin Real-Time Index (BRTI) before 6 AM EDT is above 80199.99 at 6 AM EDT on Mar 21, 2026, then the market resolves to Yes.",
       'rules_secondary': "Not all cryptocurrency price data is the same. While checking a source like Google or Coinbase may help guide your decision, the price used to determine this market is based on CF Benchmarks' corresponding Real Time Index (RTI). At the last minute before expiration, 60 RTI prices are collected. The official and final value is the average of these prices.",
       'settlement_timer_seconds': 60,
       'status': 'active',
       'strike_type': 'greater',
-      'subtitle': '$78,250 or above',
+      'subtitle': '$80,200 or above',
       'tick_size': 1,
-      'ticker': 'KXBTC-26APR0217-T78249.99',
-      'title': 'Bitcoin price range  on Apr 2, 2026?',
-      'updated_time': '2026-04-01T11:24:50.31079Z',
+      'ticker': 'KXBTC-26MAR2106-T80199.99',
+      'title': 'Bitcoin price range  on Mar 21, 2026?',
+      'updated_time': '2026-03-21T09:00:00.97978Z',
       'volume_24h_fp': '0.00',
       'volume_fp': '0.00',
-      'yes_ask_dollars': '0.0000',
-      'yes_ask_size_fp': '0.00',
+      'yes_ask_dollars': '0.0100',
+      'yes_ask_size_fp': '11228.00',
       'yes_bid_dollars': '0.0000',
       'yes_bid_size_fp': '0.00',
-      'yes_sub_title': '$78,250 or above'}}
+      'yes_sub_title': '$80,200 or above'}}
 
 #### List markets by series
 
@@ -158,11 +175,11 @@ data = client.get_markets(series_ticker=EXAMPLE_SERIES, status="open", limit=5)
 [(m["ticker"], m["title"][:60]) for m in data["markets"]]
 ```
 
-    [('KXBTC-26APR0217-T78249.99', 'Bitcoin price range  on Apr 2, 2026?'),
-     ('KXBTC-26APR0217-T58750', 'Bitcoin price range  on Apr 2, 2026?'),
-     ('KXBTC-26APR0217-B78125', 'Bitcoin price range  on Apr 2, 2026?'),
-     ('KXBTC-26APR0217-B77875', 'Bitcoin price range  on Apr 2, 2026?'),
-     ('KXBTC-26APR0217-B77625', 'Bitcoin price range  on Apr 2, 2026?')]
+    [('KXBTC-26MAR2106-T80199.99', 'Bitcoin price range  on Mar 21, 2026?'),
+     ('KXBTC-26MAR2106-T61600', 'Bitcoin price range  on Mar 21, 2026?'),
+     ('KXBTC-26MAR2106-B80150', 'Bitcoin price range  on Mar 21, 2026?'),
+     ('KXBTC-26MAR2106-B80050', 'Bitcoin price range  on Mar 21, 2026?'),
+     ('KXBTC-26MAR2106-B79950', 'Bitcoin price range  on Mar 21, 2026?')]
 
 #### List markets by event
 
@@ -172,11 +189,11 @@ data = client.get_markets(event_ticker=EXAMPLE_EVENT, status="open", limit=5)
 [(m["ticker"], m["subtitle"][:60]) for m in data["markets"]]
 ```
 
-    [('KXBTC-26APR0217-T78249.99', '$78,250 or above'),
-     ('KXBTC-26APR0217-T58750', '$58,749.99 or below'),
-     ('KXBTC-26APR0217-B78125', '$78,000 to 78,249.99'),
-     ('KXBTC-26APR0217-B77875', '$77,750 to 77,999.99'),
-     ('KXBTC-26APR0217-B77625', '$77,500 to 77,749.99')]
+    [('KXBTC-26MAR2106-T80199.99', '$80,200 or above'),
+     ('KXBTC-26MAR2106-T61600', '$61,599.99 or below'),
+     ('KXBTC-26MAR2106-B80150', '$80,100 to 80,199.99'),
+     ('KXBTC-26MAR2106-B80050', '$80,000 to 80,099.99'),
+     ('KXBTC-26MAR2106-B79950', '$79,900 to 79,999.99')]
 
 #### Auto-paginate through markets
 
@@ -189,24 +206,24 @@ list(itertools.islice(
 ```
 
     [{'can_close_early': True,
-      'close_time': '2026-04-02T21:00:00Z',
-      'created_time': '2026-04-01T10:57:37.416773Z',
-      'event_ticker': 'KXBTC-26APR0217',
-      'expected_expiration_time': '2026-04-02T21:05:00Z',
-      'expiration_time': '2026-04-09T21:00:00Z',
+      'close_time': '2026-03-21T10:00:00Z',
+      'created_time': '2026-03-20T09:01:57.529868Z',
+      'event_ticker': 'KXBTC-26MAR2106',
+      'expected_expiration_time': '2026-03-21T10:05:00Z',
+      'expiration_time': '2026-03-28T10:00:00Z',
       'expiration_value': '',
-      'floor_strike': 78249.99,
+      'floor_strike': 80199.99,
       'fractional_trading_enabled': False,
       'last_price_dollars': '0.0000',
-      'latest_expiration_time': '2026-04-09T21:00:00Z',
+      'latest_expiration_time': '2026-03-28T10:00:00Z',
       'liquidity_dollars': '0.0000',
       'market_type': 'binary',
       'no_ask_dollars': '1.0000',
-      'no_bid_dollars': '1.0000',
-      'no_sub_title': '$78,250 or above',
+      'no_bid_dollars': '0.9900',
+      'no_sub_title': '$80,200 or above',
       'notional_value_dollars': '1.0000',
       'open_interest_fp': '0.00',
-      'open_time': '2026-04-01T11:24:49Z',
+      'open_time': '2026-03-21T09:00:00Z',
       'previous_price_dollars': '0.0000',
       'previous_yes_ask_dollars': '0.0000',
       'previous_yes_bid_dollars': '0.0000',
@@ -214,42 +231,42 @@ list(itertools.islice(
       'price_ranges': [{'end': '1.0000', 'start': '0.0000', 'step': '0.0100'}],
       'response_price_units': 'usd_cent',
       'result': '',
-      'rules_primary': "If the simple average of the sixty seconds of CF Benchmarks' Bitcoin Real-Time Index (BRTI) before 5 PM EDT is above 78249.99 at 5 PM EDT on Apr 2, 2026, then the market resolves to Yes.",
+      'rules_primary': "If the simple average of the sixty seconds of CF Benchmarks' Bitcoin Real-Time Index (BRTI) before 6 AM EDT is above 80199.99 at 6 AM EDT on Mar 21, 2026, then the market resolves to Yes.",
       'rules_secondary': "Not all cryptocurrency price data is the same. While checking a source like Google or Coinbase may help guide your decision, the price used to determine this market is based on CF Benchmarks' corresponding Real Time Index (RTI). At the last minute before expiration, 60 RTI prices are collected. The official and final value is the average of these prices.",
       'settlement_timer_seconds': 60,
       'status': 'active',
       'strike_type': 'greater',
-      'subtitle': '$78,250 or above',
+      'subtitle': '$80,200 or above',
       'tick_size': 1,
-      'ticker': 'KXBTC-26APR0217-T78249.99',
-      'title': 'Bitcoin price range  on Apr 2, 2026?',
-      'updated_time': '2026-04-01T11:24:50.31079Z',
+      'ticker': 'KXBTC-26MAR2106-T80199.99',
+      'title': 'Bitcoin price range  on Mar 21, 2026?',
+      'updated_time': '2026-03-21T09:00:00.97978Z',
       'volume_24h_fp': '0.00',
       'volume_fp': '0.00',
-      'yes_ask_dollars': '0.0000',
-      'yes_ask_size_fp': '0.00',
+      'yes_ask_dollars': '0.0100',
+      'yes_ask_size_fp': '11228.00',
       'yes_bid_dollars': '0.0000',
       'yes_bid_size_fp': '0.00',
-      'yes_sub_title': '$78,250 or above'},
+      'yes_sub_title': '$80,200 or above'},
      {'can_close_early': True,
-      'cap_strike': 58750,
-      'close_time': '2026-04-02T21:00:00Z',
-      'created_time': '2026-04-01T10:57:37.416773Z',
-      'event_ticker': 'KXBTC-26APR0217',
-      'expected_expiration_time': '2026-04-02T21:05:00Z',
-      'expiration_time': '2026-04-09T21:00:00Z',
+      'cap_strike': 61600,
+      'close_time': '2026-03-21T10:00:00Z',
+      'created_time': '2026-03-20T09:01:57.529868Z',
+      'event_ticker': 'KXBTC-26MAR2106',
+      'expected_expiration_time': '2026-03-21T10:05:00Z',
+      'expiration_time': '2026-03-28T10:00:00Z',
       'expiration_value': '',
       'fractional_trading_enabled': False,
       'last_price_dollars': '0.0000',
-      'latest_expiration_time': '2026-04-09T21:00:00Z',
+      'latest_expiration_time': '2026-03-28T10:00:00Z',
       'liquidity_dollars': '0.0000',
       'market_type': 'binary',
       'no_ask_dollars': '1.0000',
-      'no_bid_dollars': '1.0000',
-      'no_sub_title': '$58,749.99 or below',
+      'no_bid_dollars': '0.9900',
+      'no_sub_title': '$61,599.99 or below',
       'notional_value_dollars': '1.0000',
       'open_interest_fp': '0.00',
-      'open_time': '2026-04-01T11:24:49Z',
+      'open_time': '2026-03-21T09:00:00Z',
       'previous_price_dollars': '0.0000',
       'previous_yes_ask_dollars': '0.0000',
       'previous_yes_bid_dollars': '0.0000',
@@ -257,43 +274,43 @@ list(itertools.islice(
       'price_ranges': [{'end': '1.0000', 'start': '0.0000', 'step': '0.0100'}],
       'response_price_units': 'usd_cent',
       'result': '',
-      'rules_primary': "If the simple average of the sixty seconds of CF Benchmarks' Bitcoin Real-Time Index (BRTI) before 5 PM EDT is below 58750 at 5 PM EDT on Apr 2, 2026, then the market resolves to Yes.",
+      'rules_primary': "If the simple average of the sixty seconds of CF Benchmarks' Bitcoin Real-Time Index (BRTI) before 6 AM EDT is below 61600 at 6 AM EDT on Mar 21, 2026, then the market resolves to Yes.",
       'rules_secondary': "Not all cryptocurrency price data is the same. While checking a source like Google or Coinbase may help guide your decision, the price used to determine this market is based on CF Benchmarks' corresponding Real Time Index (RTI). At the last minute before expiration, 60 RTI prices are collected. The official and final value is the average of these prices.",
       'settlement_timer_seconds': 60,
       'status': 'active',
       'strike_type': 'less',
-      'subtitle': '$58,749.99 or below',
+      'subtitle': '$61,599.99 or below',
       'tick_size': 1,
-      'ticker': 'KXBTC-26APR0217-T58750',
-      'title': 'Bitcoin price range  on Apr 2, 2026?',
-      'updated_time': '2026-04-01T11:24:50.273169Z',
+      'ticker': 'KXBTC-26MAR2106-T61600',
+      'title': 'Bitcoin price range  on Mar 21, 2026?',
+      'updated_time': '2026-03-21T09:00:00.714495Z',
       'volume_24h_fp': '0.00',
       'volume_fp': '0.00',
-      'yes_ask_dollars': '0.0000',
-      'yes_ask_size_fp': '0.00',
+      'yes_ask_dollars': '0.0100',
+      'yes_ask_size_fp': '11228.00',
       'yes_bid_dollars': '0.0000',
       'yes_bid_size_fp': '0.00',
-      'yes_sub_title': '$58,749.99 or below'},
+      'yes_sub_title': '$61,599.99 or below'},
      {'can_close_early': True,
-      'cap_strike': 78249.99,
-      'close_time': '2026-04-02T21:00:00Z',
-      'created_time': '2026-04-01T10:57:37.416773Z',
-      'event_ticker': 'KXBTC-26APR0217',
-      'expected_expiration_time': '2026-04-02T21:05:00Z',
-      'expiration_time': '2026-04-09T21:00:00Z',
+      'cap_strike': 80199.99,
+      'close_time': '2026-03-21T10:00:00Z',
+      'created_time': '2026-03-20T09:01:57.529868Z',
+      'event_ticker': 'KXBTC-26MAR2106',
+      'expected_expiration_time': '2026-03-21T10:05:00Z',
+      'expiration_time': '2026-03-28T10:00:00Z',
       'expiration_value': '',
-      'floor_strike': 78000,
+      'floor_strike': 80100,
       'fractional_trading_enabled': False,
       'last_price_dollars': '0.0000',
-      'latest_expiration_time': '2026-04-09T21:00:00Z',
+      'latest_expiration_time': '2026-03-28T10:00:00Z',
       'liquidity_dollars': '0.0000',
       'market_type': 'binary',
       'no_ask_dollars': '1.0000',
-      'no_bid_dollars': '0.0000',
-      'no_sub_title': '$78,000 to 78,249.99',
+      'no_bid_dollars': '0.9900',
+      'no_sub_title': '$80,100 to 80,199.99',
       'notional_value_dollars': '1.0000',
       'open_interest_fp': '0.00',
-      'open_time': '2026-04-01T11:24:49Z',
+      'open_time': '2026-03-21T09:00:00Z',
       'previous_price_dollars': '0.0000',
       'previous_yes_ask_dollars': '0.0000',
       'previous_yes_bid_dollars': '0.0000',
@@ -301,43 +318,43 @@ list(itertools.islice(
       'price_ranges': [{'end': '1.0000', 'start': '0.0000', 'step': '0.0100'}],
       'response_price_units': 'usd_cent',
       'result': '',
-      'rules_primary': "If the simple average of the sixty seconds of CF Benchmarks' Bitcoin Real-Time Index (BRTI) before 5 PM EDT is between 78000-78249.99 at 5 PM EDT on Apr 2, 2026, then the market resolves to Yes.",
+      'rules_primary': "If the simple average of the sixty seconds of CF Benchmarks' Bitcoin Real-Time Index (BRTI) before 6 AM EDT is between 80100-80199.99 at 6 AM EDT on Mar 21, 2026, then the market resolves to Yes.",
       'rules_secondary': "Not all cryptocurrency price data is the same. While checking a source like Google or Coinbase may help guide your decision, the price used to determine this market is based on CF Benchmarks' corresponding Real Time Index (RTI). At the last minute before expiration, 60 RTI prices are collected. The official and final value is the average of these prices.",
       'settlement_timer_seconds': 60,
       'status': 'active',
       'strike_type': 'between',
-      'subtitle': '$78,000 to 78,249.99',
+      'subtitle': '$80,100 to 80,199.99',
       'tick_size': 1,
-      'ticker': 'KXBTC-26APR0217-B78125',
-      'title': 'Bitcoin price range  on Apr 2, 2026?',
-      'updated_time': '2026-04-01T11:24:50.31079Z',
+      'ticker': 'KXBTC-26MAR2106-B80150',
+      'title': 'Bitcoin price range  on Mar 21, 2026?',
+      'updated_time': '2026-03-21T09:00:00.97978Z',
       'volume_24h_fp': '0.00',
       'volume_fp': '0.00',
-      'yes_ask_dollars': '1.0000',
-      'yes_ask_size_fp': '0.00',
+      'yes_ask_dollars': '0.0100',
+      'yes_ask_size_fp': '11281.00',
       'yes_bid_dollars': '0.0000',
       'yes_bid_size_fp': '0.00',
-      'yes_sub_title': '$78,000 to 78,249.99'},
+      'yes_sub_title': '$80,100 to 80,199.99'},
      {'can_close_early': True,
-      'cap_strike': 77999.99,
-      'close_time': '2026-04-02T21:00:00Z',
-      'created_time': '2026-04-01T10:57:37.416773Z',
-      'event_ticker': 'KXBTC-26APR0217',
-      'expected_expiration_time': '2026-04-02T21:05:00Z',
-      'expiration_time': '2026-04-09T21:00:00Z',
+      'cap_strike': 80099.99,
+      'close_time': '2026-03-21T10:00:00Z',
+      'created_time': '2026-03-20T09:01:57.529868Z',
+      'event_ticker': 'KXBTC-26MAR2106',
+      'expected_expiration_time': '2026-03-21T10:05:00Z',
+      'expiration_time': '2026-03-28T10:00:00Z',
       'expiration_value': '',
-      'floor_strike': 77750,
+      'floor_strike': 80000,
       'fractional_trading_enabled': False,
       'last_price_dollars': '0.0000',
-      'latest_expiration_time': '2026-04-09T21:00:00Z',
+      'latest_expiration_time': '2026-03-28T10:00:00Z',
       'liquidity_dollars': '0.0000',
       'market_type': 'binary',
       'no_ask_dollars': '1.0000',
-      'no_bid_dollars': '1.0000',
-      'no_sub_title': '$77,750 to 77,999.99',
+      'no_bid_dollars': '0.9900',
+      'no_sub_title': '$80,000 to 80,099.99',
       'notional_value_dollars': '1.0000',
       'open_interest_fp': '0.00',
-      'open_time': '2026-04-01T11:24:49Z',
+      'open_time': '2026-03-21T09:00:00Z',
       'previous_price_dollars': '0.0000',
       'previous_yes_ask_dollars': '0.0000',
       'previous_yes_bid_dollars': '0.0000',
@@ -345,43 +362,43 @@ list(itertools.islice(
       'price_ranges': [{'end': '1.0000', 'start': '0.0000', 'step': '0.0100'}],
       'response_price_units': 'usd_cent',
       'result': '',
-      'rules_primary': "If the simple average of the sixty seconds of CF Benchmarks' Bitcoin Real-Time Index (BRTI) before 5 PM EDT is between 77750-77999.99 at 5 PM EDT on Apr 2, 2026, then the market resolves to Yes.",
+      'rules_primary': "If the simple average of the sixty seconds of CF Benchmarks' Bitcoin Real-Time Index (BRTI) before 6 AM EDT is between 80000-80099.99 at 6 AM EDT on Mar 21, 2026, then the market resolves to Yes.",
       'rules_secondary': "Not all cryptocurrency price data is the same. While checking a source like Google or Coinbase may help guide your decision, the price used to determine this market is based on CF Benchmarks' corresponding Real Time Index (RTI). At the last minute before expiration, 60 RTI prices are collected. The official and final value is the average of these prices.",
       'settlement_timer_seconds': 60,
       'status': 'active',
       'strike_type': 'between',
-      'subtitle': '$77,750 to 77,999.99',
+      'subtitle': '$80,000 to 80,099.99',
       'tick_size': 1,
-      'ticker': 'KXBTC-26APR0217-B77875',
-      'title': 'Bitcoin price range  on Apr 2, 2026?',
-      'updated_time': '2026-04-01T11:24:50.31079Z',
+      'ticker': 'KXBTC-26MAR2106-B80050',
+      'title': 'Bitcoin price range  on Mar 21, 2026?',
+      'updated_time': '2026-03-21T09:00:00.97978Z',
       'volume_24h_fp': '0.00',
       'volume_fp': '0.00',
-      'yes_ask_dollars': '0.0000',
-      'yes_ask_size_fp': '0.00',
+      'yes_ask_dollars': '0.0100',
+      'yes_ask_size_fp': '11505.00',
       'yes_bid_dollars': '0.0000',
       'yes_bid_size_fp': '0.00',
-      'yes_sub_title': '$77,750 to 77,999.99'},
+      'yes_sub_title': '$80,000 to 80,099.99'},
      {'can_close_early': True,
-      'cap_strike': 77749.99,
-      'close_time': '2026-04-02T21:00:00Z',
-      'created_time': '2026-04-01T10:57:37.416773Z',
-      'event_ticker': 'KXBTC-26APR0217',
-      'expected_expiration_time': '2026-04-02T21:05:00Z',
-      'expiration_time': '2026-04-09T21:00:00Z',
+      'cap_strike': 79999.99,
+      'close_time': '2026-03-21T10:00:00Z',
+      'created_time': '2026-03-20T09:01:57.529868Z',
+      'event_ticker': 'KXBTC-26MAR2106',
+      'expected_expiration_time': '2026-03-21T10:05:00Z',
+      'expiration_time': '2026-03-28T10:00:00Z',
       'expiration_value': '',
-      'floor_strike': 77500,
+      'floor_strike': 79900,
       'fractional_trading_enabled': False,
       'last_price_dollars': '0.0000',
-      'latest_expiration_time': '2026-04-09T21:00:00Z',
+      'latest_expiration_time': '2026-03-28T10:00:00Z',
       'liquidity_dollars': '0.0000',
       'market_type': 'binary',
       'no_ask_dollars': '1.0000',
-      'no_bid_dollars': '1.0000',
-      'no_sub_title': '$77,500 to 77,749.99',
+      'no_bid_dollars': '0.9900',
+      'no_sub_title': '$79,900 to 79,999.99',
       'notional_value_dollars': '1.0000',
       'open_interest_fp': '0.00',
-      'open_time': '2026-04-01T11:24:49Z',
+      'open_time': '2026-03-21T09:00:00Z',
       'previous_price_dollars': '0.0000',
       'previous_yes_ask_dollars': '0.0000',
       'previous_yes_bid_dollars': '0.0000',
@@ -389,23 +406,23 @@ list(itertools.islice(
       'price_ranges': [{'end': '1.0000', 'start': '0.0000', 'step': '0.0100'}],
       'response_price_units': 'usd_cent',
       'result': '',
-      'rules_primary': "If the simple average of the sixty seconds of CF Benchmarks' Bitcoin Real-Time Index (BRTI) before 5 PM EDT is between 77500-77749.99 at 5 PM EDT on Apr 2, 2026, then the market resolves to Yes.",
+      'rules_primary': "If the simple average of the sixty seconds of CF Benchmarks' Bitcoin Real-Time Index (BRTI) before 6 AM EDT is between 79900-79999.99 at 6 AM EDT on Mar 21, 2026, then the market resolves to Yes.",
       'rules_secondary': "Not all cryptocurrency price data is the same. While checking a source like Google or Coinbase may help guide your decision, the price used to determine this market is based on CF Benchmarks' corresponding Real Time Index (RTI). At the last minute before expiration, 60 RTI prices are collected. The official and final value is the average of these prices.",
       'settlement_timer_seconds': 60,
       'status': 'active',
       'strike_type': 'between',
-      'subtitle': '$77,500 to 77,749.99',
+      'subtitle': '$79,900 to 79,999.99',
       'tick_size': 1,
-      'ticker': 'KXBTC-26APR0217-B77625',
-      'title': 'Bitcoin price range  on Apr 2, 2026?',
-      'updated_time': '2026-04-01T11:24:50.31079Z',
+      'ticker': 'KXBTC-26MAR2106-B79950',
+      'title': 'Bitcoin price range  on Mar 21, 2026?',
+      'updated_time': '2026-03-21T09:00:00.97978Z',
       'volume_24h_fp': '0.00',
       'volume_fp': '0.00',
-      'yes_ask_dollars': '0.0000',
-      'yes_ask_size_fp': '0.00',
+      'yes_ask_dollars': '0.0100',
+      'yes_ask_size_fp': '11505.00',
       'yes_bid_dollars': '0.0000',
       'yes_bid_size_fp': '0.00',
-      'yes_sub_title': '$77,500 to 77,749.99'}]
+      'yes_sub_title': '$79,900 to 79,999.99'}]
 
 #### Order book
 
@@ -414,7 +431,12 @@ ob = client.get_market_orderbook(EXAMPLE_TICKER, depth=5)
 ob
 ```
 
-    {'orderbook_fp': {'no_dollars': [], 'yes_dollars': []}}
+    {'orderbook_fp': {'no_dollars': [['0.4700', '1.00'],
+       ['0.5000', '444.00'],
+       ['0.8000', '277.00'],
+       ['0.9600', '1.00'],
+       ['0.9900', '11228.00']],
+      'yes_dollars': []}}
 
 ### 3. REST Client – Authenticated Endpoints
 
@@ -427,7 +449,7 @@ bal = Balance.from_api(bal_data)
 f"${bal.balance_dollars:.2f} available"
 ```
 
-    '$500.00 available'
+    '$539.31 available'
 
 ``` python
 # Positions (first 5)
@@ -443,7 +465,11 @@ orders = list(itertools.islice(client.paginate_orders(), 5))
 [Order.from_api(o).order_id for o in orders]
 ```
 
-    ['321cbb3e-4447-4a45-8e43-d0cea65d06ff']
+    ['57c58eec-949f-4c31-964d-8a9e12b606a9',
+     '6e08eaeb-e790-4fa9-8223-477d7c9ca2aa',
+     '97fe4eea-f866-4a06-9368-05ef5f8bbc9e',
+     '61555705-13d5-4733-9c03-63f0f43a1066',
+     'fe08f26b-ad4d-42f5-ab99-a1457811e088']
 
 ### 4. Placing / Managing Orders
 
@@ -566,69 +592,13 @@ book = OrderBook.from_rest(EXAMPLE_TICKER, rest_data)
 (book.best_bid(), book.best_ask(), book.spread())
 ```
 
-    (None, None, None)
-
-------------------------------------------------------------------------
-
-## Strategy Loop
-
-`kalshi_trades/strategy.py` streams the order book via WebSocket and
-acts on imbalance signals. Use it as a script **or** import the
-`Strategy` class into your own notebook / script.
-
-### Running from the command line
-
-``` {bash}
-#| label: strategy-cli
-#| eval: false
-# Test mode — prints signals, no real orders placed (default)
-python -m kalshi_trades.strategy TICKER
-
-# Production mode — places real orders (requires .env credentials)
-python -m kalshi_trades.strategy TICKER --mode prod
-
-# Demo environment
-python -m kalshi_trades.strategy TICKER --mode test --env demo
-```
-
-### Using `Strategy` in a script or notebook
-
-``` python
-import asyncio
-from kalshi_trades.strategy import Strategy
-
-strategy = Strategy(
-    ticker="SOME-MARKET-TICKER",
-    mode="test",   # "prod" to place real orders
-    env="prod",
-)
-
-# Streams until Ctrl-C; prints a status line every 10 book updates
-asyncio.run(strategy.run())
-```
-
-### Signal logic
-
-The strategy calls `evaluate()` after every WebSocket update:
-
-| Signal      | Condition                                              |
-|-------------|--------------------------------------------------------|
-| **BUY YES** | position flat AND `imbalance > 0.25` AND `spread ≤ 6¢` |
-| **EXIT**    | position held AND `imbalance < -0.15`                  |
-| **HOLD**    | otherwise                                              |
-
-`imbalance` is `(bid_depth - ask_depth) / total_depth` across the top of
-book. In test mode, orders are simulated and printed. In prod mode,
-`create_order()` is called and any resting orders are cancelled before
-exiting.
+    (None, Decimal('0.0100'), None)
 
 ------------------------------------------------------------------------
 
 ## CLI – Live Order Book Watcher
 
-``` {bash}
-#| label: cli-watcher
-#| eval: false
+``` bash
 # Demo environment (default)
 python -m kalshi_trades TICKER
 
@@ -655,9 +625,9 @@ cutoff = client.get_historical_cutoff()
 cutoff
 ```
 
-    {'market_settled_ts': '2026-01-02T00:00:00Z',
-     'orders_updated_ts': '2026-01-02T00:00:00Z',
-     'trades_created_ts': '2026-01-02T00:00:00Z'}
+    {'market_settled_ts': '2025-03-21T00:00:00Z',
+     'orders_updated_ts': '2025-03-21T00:00:00Z',
+     'trades_created_ts': '2025-03-21T00:00:00Z'}
 
 ``` python
 # Fetch settled markets older than the cutoff
@@ -665,11 +635,11 @@ hist = client.get_historical_markets(limit=5)
 [(m["ticker"], m["status"]) for m in hist["markets"]]
 ```
 
-    [('KXEPLGOAL-26JAN01CRYFUL-FULTCASTA21-1', 'finalized'),
-     ('KXEPLGOAL-26JAN01CRYFUL-CRYJCANVO23-1', 'finalized'),
-     ('KXEPLGOAL-26JAN01CRYFUL-FULSLUKIC20-1', 'finalized'),
-     ('KXEPLGOAL-26JAN01CRYFUL-FULSBERGE16-1', 'finalized'),
-     ('KXEPLGOAL-26JAN01CRYFUL-FULRJIMEN7-2', 'finalized')]
+    [('KXSECPRESSMENTION-25MAR20-PHONECALL', 'finalized'),
+     ('KXSECPRESSMENTION-25MAR20-UKRAINE', 'finalized'),
+     ('KXSECPRESSMENTION-25MAR20-CEASEFIRE', 'finalized'),
+     ('KXSECPRESSMENTION-25MAR20-PUTIN', 'finalized'),
+     ('KXSECPRESSMENTION-25MAR20-BOASBERG', 'finalized')]
 
 ------------------------------------------------------------------------
 

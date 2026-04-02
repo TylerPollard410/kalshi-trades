@@ -23,4 +23,5 @@ all = ["kalshi-trades[viz,sdk,notebook]"]
 include = ["kalshi_trades*"]
 
 [project.scripts]
-kalshi-watch = "kalshi_trades.watcher:main"
+kalshi-watch = "kalshi_trades.watcher:cli"
+kalshi-strategy = "kalshi_trades.strategy:cli"

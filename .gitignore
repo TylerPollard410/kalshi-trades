@@ -45,3 +45,4 @@ web/
 march_analyzer.py
 order_book.py
 watcher.py
+/.quarto/

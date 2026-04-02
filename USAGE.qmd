@@ -17,7 +17,8 @@ and the live order-book CLI.
 
 ## Installation
 
-```{.bash}
+```{bash}
+#| label: install
 # From the repo root (editable install)
 uv pip install -e .
 
@@ -40,6 +41,7 @@ KALSHI_PRIVATE_KEY_PATH=/path/to/your/kalshi-key.key
 ```
 
 ```{python}
+#| label: config-demo
 #| eval: true
 from kalshi_trades import Config
 
@@ -49,6 +51,7 @@ config
 ```
 
 ```{python}
+#| label: config-prod
 #| eval: false
 # Production
 config = Config(env="prod")
@@ -64,15 +67,17 @@ config = Config(
 ### 2. REST Client – Market Data (no auth required)
 
 ```{python}
+#| label: rest-client-init
 #| eval: true
 from kalshi_trades import Config, KalshiClient
 
-client = KalshiClient(Config(env="prod"))
+client = KalshiClient(Config(env="demo"))
 ```
 
 #### Using a predefined ticker
 
 ```{python}
+#| label: find-example-ticker
 #| eval: true
 # Find a BTC market with liquidity for examples
 _btc = client.get_markets(series_ticker="KXBTC", status="open", limit=20)
@@ -86,6 +91,7 @@ EXAMPLE_TICKER
 #### Single market detail
 
 ```{python}
+#| label: get-market
 #| eval: true
 market = client.get_market(EXAMPLE_TICKER)
 market
@@ -94,6 +100,7 @@ market
 #### List markets by series
 
 ```{python}
+#| label: list-markets-series
 #| eval: true
 # series_ticker is the top-level series (e.g. "KXBTC"), NOT the event ticker
 data = client.get_markets(series_ticker=EXAMPLE_SERIES, status="open", limit=5)
@@ -103,6 +110,7 @@ data = client.get_markets(series_ticker=EXAMPLE_SERIES, status="open", limit=5)
 #### List markets by event
 
 ```{python}
+#| label: list-markets-event
 #| eval: true
 # event_ticker groups markets under one expiration window
 data = client.get_markets(event_ticker=EXAMPLE_EVENT, status="open", limit=5)
@@ -112,6 +120,7 @@ data = client.get_markets(event_ticker=EXAMPLE_EVENT, status="open", limit=5)
 #### Auto-paginate through markets
 
 ```{python}
+#| label: paginate-markets
 #| eval: true
 import itertools
 
@@ -123,6 +132,7 @@ list(itertools.islice(
 #### Order book
 
 ```{python}
+#| label: get-orderbook
 #| eval: true
 ob = client.get_market_orderbook(EXAMPLE_TICKER, depth=5)
 ob
@@ -131,6 +141,7 @@ ob
 ### 3. REST Client – Authenticated Endpoints
 
 ```{python}
+#| label: get-balance
 #| eval: true
 from kalshi_trades.models import Balance, Position, Order
 
@@ -141,6 +152,7 @@ f"${bal.balance_dollars:.2f} available"
 ```
 
 ```{python}
+#| label: get-positions
 #| eval: true
 # Positions (first 5)
 positions = list(itertools.islice(client.paginate_positions(count_filter="position"), 5))
@@ -148,6 +160,7 @@ positions = list(itertools.islice(client.paginate_positions(count_filter="positi
 ```
 
 ```{python}
+#| label: get-orders
 #| eval: true
 # Orders (first 5)
 orders = list(itertools.islice(client.paginate_orders(), 5))
@@ -157,8 +170,8 @@ orders = list(itertools.islice(client.paginate_orders(), 5))
 ### 4. Placing / Managing Orders
 
 ```{python}
+#| label: place-order
 #| eval: false
-
 # Place a limit order: buy 1 YES at 5¢
 result = client.create_order(
     ticker="SOME-MARKET-TICKER",
@@ -173,8 +186,8 @@ order_id
 ```
 
 ```{python}
+#| label: manage-orders
 #| eval: false
-
 # Amend the order price
 client.amend_order(order_id, price=6)
 
@@ -188,6 +201,7 @@ client.batch_cancel_orders(market_ticker="SOME-MARKET-TICKER")
 ### 5. WebSocket Streaming
 
 ```{python}
+#| label: websocket-stream
 #| eval: false
 import asyncio
 from kalshi_trades import Config, KalshiAuth, KalshiWebSocket, OrderBook
@@ -221,6 +235,7 @@ asyncio.run(ws.run_forever(subscribe_on_connect=on_connect))
 ### 6. Subscribing to Multiple Markets
 
 ```{python}
+#| label: websocket-multi-market
 #| eval: false
 async def on_connect(ws_client):
     # Subscribe to tickers for all markets (no market_ticker → all)
@@ -236,6 +251,7 @@ async def on_connect(ws_client):
 ### 7. Private Channels (fills, positions)
 
 ```{python}
+#| label: websocket-private-channels
 #| eval: false
 ws.on("fill", lambda data: print("Fill:", data["msg"]))
 
@@ -246,6 +262,7 @@ async def on_connect(ws_client):
 ### 8. Updating Subscriptions Dynamically
 
 ```{python}
+#| label: websocket-update-subscription
 #| eval: false
 async def example(ws_client):
     # Initial subscribe returns a command ID; the "subscribed" response
@@ -274,6 +291,7 @@ async def example(ws_client):
 ### 9. Seeding OrderBook from REST before WebSocket
 
 ```{python}
+#| label: orderbook-seed-from-rest
 #| eval: true
 from kalshi_trades import OrderBook
 
@@ -286,9 +304,66 @@ book = OrderBook.from_rest(EXAMPLE_TICKER, rest_data)
 
 ---
 
+## Strategy Loop
+
+`kalshi_trades/strategy.py` streams the order book via WebSocket and acts on
+imbalance signals. Use it as a script **or** import the `Strategy` class into
+your own notebook / script.
+
+### Running from the command line
+
+```{bash}
+#| label: strategy-cli
+#| eval: false
+# Test mode — prints signals, no real orders placed (default)
+python -m kalshi_trades.strategy TICKER
+
+# Production mode — places real orders (requires .env credentials)
+python -m kalshi_trades.strategy TICKER --mode prod
+
+# Demo environment
+python -m kalshi_trades.strategy TICKER --mode test --env demo
+```
+
+### Using `Strategy` in a script or notebook
+
+```{python}
+#| label: strategy-class
+#| eval: false
+import asyncio
+from kalshi_trades.strategy import Strategy
+
+strategy = Strategy(
+    ticker="SOME-MARKET-TICKER",
+    mode="test",   # "prod" to place real orders
+    env="prod",
+)
+
+# Streams until Ctrl-C; prints a status line every 10 book updates
+asyncio.run(strategy.run())
+```
+
+### Signal logic
+
+The strategy calls `evaluate()` after every WebSocket update:
+
+| Signal | Condition |
+|--------|-----------|
+| **BUY YES** | position flat AND `imbalance > 0.25` AND `spread ≤ 6¢` |
+| **EXIT** | position held AND `imbalance < -0.15` |
+| **HOLD** | otherwise |
+
+`imbalance` is `(bid_depth - ask_depth) / total_depth` across the top of book.
+In test mode, orders are simulated and printed. In prod mode, `create_order()`
+is called and any resting orders are cancelled before exiting.
+
+---
+
 ## CLI – Live Order Book Watcher
 
-```{.bash}
+```{bash}
+#| label: cli-watcher
+#| eval: false
 # Demo environment (default)
 python -m kalshi_trades TICKER
 
@@ -310,6 +385,7 @@ kalshi-watch TICKER --env prod
 ## Historical Data
 
 ```{python}
+#| label: historical-cutoff
 #| eval: true
 # Check the cutoff timestamps
 cutoff = client.get_historical_cutoff()
@@ -317,6 +393,7 @@ cutoff
 ```
 
 ```{python}
+#| label: historical-markets
 #| eval: true
 # Fetch settled markets older than the cutoff
 hist = client.get_historical_markets(limit=5)

@@ -1,6 +1,6 @@
-# kalshi-trades
-
-Python package for the [Kalshi](https://kalshi.com) prediction-market REST API and WebSocket streaming.
+├── watcher.py       # CLI entry point (live order-book display)
+└── strategy.py      # Imbalance-based strategy loop (script or import)
+```Kalshi](https://kalshi.com) prediction-market REST API and WebSocket streaming.
 
 [![Render USAGE](https://github.com/tylerpollard410/kalshi-trades/actions/workflows/render-usage.yml/badge.svg)](https://github.com/tylerpollard410/kalshi-trades/actions/workflows/render-usage.yml)
 
