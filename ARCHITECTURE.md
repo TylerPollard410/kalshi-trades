@@ -14,10 +14,12 @@ kalshi_trades/
 ├── config.py        # Environment-aware configuration (prod / demo)
 ├── auth.py          # RSA-PSS request signing (REST + WebSocket)
 ├── client.py        # Synchronous REST client (all API endpoints)
+├── dashboard.py     # Local browser dashboard for multiple markets
 ├── models.py        # Typed dataclass models for API responses
 ├── orderbook.py     # Local order book state + analytics
 ├── websocket.py     # Async WebSocket client for real-time streaming
-└── watcher.py       # CLI entry point for the live order-book viewer
+├── watcher.py       # CLI entry point for the live order-book viewer
+└── strategy.py      # Imbalance-based strategy loop (script or import)
 ```
 
 Supporting files at the repo root:
@@ -146,14 +148,36 @@ python -m kalshi_trades.watcher TICKER
 kalshi-watch TICKER            # after pip install
 ```
 
-### 8. pyproject.toml
+### 8. Browser Dashboard (`kalshi_trades/dashboard.py`)
+
+The dashboard layers a local HTTP page and browser-facing WebSocket server on
+top of the same `OrderBook` + `KalshiWebSocket` primitives used by the CLI
+watcher. Each market keeps its own in-memory `OrderBook`, and the browser UI
+renders those books from structured `to_view()` payloads rather than terminal
+print calls.
+
+The current dashboard adds several pieces of local UI state on top of the
+streaming layer:
+
+- Per-card `YES` / `NO` / `BOTH` view modes, with `BOTH` as the default.
+- Watchlist controls for hide/show, manual reordering, and pinning a primary
+  watcher to the top.
+- Sort modes (`manual`, `edge`, `spread`, `imbalance`) and compact scan mode.
+- Lightweight alert chips when spreads widen abruptly or large walls shift.
+
+`OrderBook.to_view()` now carries extra microstructure fields that the browser
+can render without another backend round trip, including midpoint, edge versus
+mid, and near-touch depth.
+
+### 9. pyproject.toml
 
 - Bumped version to `0.2.0`.
 - Core dependencies trimmed to only what `kalshi_trades` needs:
   `cryptography`, `python-dotenv`, `requests`, `websockets`.
 - Original extras (`plotly`, `pykalshi`, `nbformat`) moved to optional
   dependency groups (`viz`, `sdk`, `notebook`, `all`).
-- Added `[project.scripts]` entry point `kalshi-watch`.
+- `[project.scripts]` exposes `kalshi-watch`, `kalshi-view`, and
+  `kalshi-strategy`.
 
 ---
 

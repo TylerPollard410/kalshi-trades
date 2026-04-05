@@ -81,6 +81,14 @@ class OrderBook:
             return "--"
         return f"{Decimal(str(qty)):,.2f}"
 
+    @staticmethod
+    def _fmt_signed_price(price: Decimal | None) -> str:
+        if price is None:
+            return "--"
+        cents = int((price * 100).quantize(Decimal("1")))
+        sign = "+" if cents > 0 else ""
+        return f"{sign}{cents}¢"
+
     # ------------------------------------------------------------------
     # Sequence tracking
     # ------------------------------------------------------------------
@@ -280,6 +288,101 @@ class OrderBook:
             if best - Decimal(p) <= window
         )
 
+    def to_view(
+        self,
+        side: str = "yes",
+        depth: int = 8,
+        wall_threshold: str | None = None,
+    ) -> dict[str, Any]:
+        """Build a structured view of the current book for terminal or UI rendering."""
+        bid = self.best_bid(side)
+        ask = self.best_ask(side)
+        sprd = self.spread(side)
+        mid = self.mid(side)
+        imb = self.imbalance(side)
+        ticker_last = self.ticker_last(side)
+        edge_vs_mid = None
+        if ticker_last is not None and mid is not None:
+            edge_vs_mid = ticker_last - mid
+        label = side.upper()
+        other_side = "no" if side == "yes" else "yes"
+        own_depth_5c = self.depth_at(side, within="0.05")
+        other_depth_5c = self.depth_at(other_side, within="0.05")
+
+        own_walls: list[tuple[Decimal, Decimal]] = []
+        other_walls: list[tuple[Decimal, Decimal]] = []
+        threshold_dec = Decimal(str(wall_threshold)) if wall_threshold is not None else None
+        if threshold_dec is not None:
+            own_walls, other_walls = self.wall_candidates(
+                side=side,
+                threshold=wall_threshold,
+                depth=depth,
+            )
+
+        other = self.no if side == "yes" else self.yes
+        other_sorted = self._sorted_levels(other)[:depth]
+        asks: list[dict[str, Any]] = []
+        for price, qty in reversed(other_sorted):
+            qty_dec = Decimal(qty)
+            asks.append({
+                "price": self._fmt_price(Decimal("1.00") - Decimal(price)),
+                "qty": self._fmt_qty(qty),
+                "is_wall": threshold_dec is not None and qty_dec >= threshold_dec,
+            })
+
+        own = self.yes if side == "yes" else self.no
+        own_sorted = self._sorted_levels(own)[:depth]
+        bids: list[dict[str, Any]] = []
+        for price, qty in own_sorted:
+            qty_dec = Decimal(qty)
+            bids.append({
+                "price": self._fmt_price(Decimal(price)),
+                "qty": self._fmt_qty(qty),
+                "is_wall": threshold_dec is not None and qty_dec >= threshold_dec,
+            })
+
+        best_bid_wall = None
+        if own_walls:
+            best_bid_wall = (
+                f"{self._fmt_price(own_walls[0][0])} x {self._fmt_qty(own_walls[0][1])}"
+            )
+
+        best_ask_wall = None
+        if other_walls:
+            best_ask_wall = (
+                f"{self._fmt_price(Decimal('1.00') - other_walls[0][0])} x "
+                f"{self._fmt_qty(other_walls[0][1])}"
+            )
+
+        return {
+            "market_ticker": self.market_ticker,
+            "side": side,
+            "label": label,
+            "last_event": self.last_event,
+            "last_seq": self.last_seq,
+            "book_bid": self._fmt_price(bid),
+            "book_ask": self._fmt_price(ask),
+            "spread": self._fmt_price(sprd),
+            "mid": self._fmt_price(mid),
+            "ticker_last": self._fmt_price(ticker_last),
+            "ticker_bid": self._fmt_price(self.ticker_bid(side)),
+            "ticker_ask": self._fmt_price(self.ticker_ask(side)),
+            "edge_vs_mid": self._fmt_signed_price(edge_vs_mid),
+            "volume": self.volume_fp or "--",
+            "open_interest": self.open_interest_fp or "--",
+            "imbalance": f"{imb:.3f}" if imb is not None else "--",
+            "depth_5c_own": self._fmt_qty(own_depth_5c),
+            "depth_5c_other": self._fmt_qty(other_depth_5c),
+            "last_trade_price": self._fmt_price(self.trade_price(side)),
+            "last_trade_count": self.last_trade_count_fp or "--",
+            "last_trade_side": self.last_trade_side or "--",
+            "wall_threshold": self._fmt_qty(wall_threshold) if wall_threshold is not None else None,
+            "best_bid_wall": best_bid_wall,
+            "best_ask_wall": best_ask_wall,
+            "asks": asks,
+            "bids": bids,
+        }
+
     # ------------------------------------------------------------------
     # Terminal display
     # ------------------------------------------------------------------
@@ -290,88 +393,53 @@ class OrderBook:
         wall_threshold: str | None = None,
     ) -> None:
         """Pretty-print the book to the terminal (clears screen)."""
-        bid = self.best_bid(side)
-        ask = self.best_ask(side)
-        sprd = self.spread(side)
-        imb = self.imbalance(side)
-        label = side.upper()
-
-        own_walls: list[tuple[Decimal, Decimal]] = []
-        other_walls: list[tuple[Decimal, Decimal]] = []
-        if wall_threshold is not None:
-            own_walls, other_walls = self.wall_candidates(
-                side=side, threshold=wall_threshold, depth=depth
-            )
+        view = self.to_view(side=side, depth=depth, wall_threshold=wall_threshold)
 
         print("\033[2J\033[H", end="")
-        print(f"  {self.market_ticker}  [{label}]")
+        print(f"  {view['market_ticker']}  [{view['label']}]")
         print(
-            f"  Event: {self.last_event:<8} "
-            f"Seq: {self.last_seq if self.last_seq is not None else '--'}"
+            f"  Event: {view['last_event']:<8} "
+            f"Seq: {view['last_seq'] if view['last_seq'] is not None else '--'}"
         )
         print(
-            f"  Book Bid: {self._fmt_price(bid)}   "
-            f"Book Ask: {self._fmt_price(ask)}   "
-            f"Spread: {self._fmt_price(sprd)}"
+            f"  Book Bid: {view['book_bid']}   "
+            f"Book Ask: {view['book_ask']}   "
+            f"Spread: {view['spread']}"
         )
         print(
-            f"  Ticker Last: {self._fmt_price(self.ticker_last(side))}   "
-            f"{label} Bid/Ask: {self._fmt_price(self.ticker_bid(side))}/"
-            f"{self._fmt_price(self.ticker_ask(side))}"
+            f"  Ticker Last: {view['ticker_last']}   "
+            f"{view['label']} Bid/Ask: {view['ticker_bid']}/{view['ticker_ask']}"
         )
         print(
-            f"  Volume: {self.volume_fp or '--'}   "
-            f"Open Interest: {self.open_interest_fp or '--'}   "
-            f"Imbalance: {f'{imb:.3f}' if imb is not None else '--'}"
+            f"  Volume: {view['volume']}   "
+            f"Open Interest: {view['open_interest']}   "
+            f"Imbalance: {view['imbalance']}"
         )
         print(
-            f"  Last Trade: {self._fmt_price(self.trade_price(side))} x "
-            f"{self.last_trade_count_fp or '--'} ({self.last_trade_side or '--'})"
+            f"  Last Trade: {view['last_trade_price']} x "
+            f"{view['last_trade_count']} ({view['last_trade_side']})"
         )
-        if wall_threshold is not None:
-            own_summary = (
-                f"{self._fmt_price(own_walls[0][0])} x {self._fmt_qty(own_walls[0][1])}"
-                if own_walls
-                else "--"
-            )
-            other_summary = (
-                f"{self._fmt_price(Decimal('1.00') - other_walls[0][0])} x {self._fmt_qty(other_walls[0][1])}"
-                if other_walls
-                else "--"
-            )
+        if view["wall_threshold"] is not None:
             print(
-                f"  Wall Threshold: {self._fmt_qty(wall_threshold)}   "
-                f"Best {label} Bid Wall: {own_summary}   "
-                f"Best {label} Ask Wall: {other_summary}"
+                f"  Wall Threshold: {view['wall_threshold']}   "
+                f"Best {view['label']} Bid Wall: {view['best_bid_wall'] or '--'}   "
+                f"Best {view['label']} Ask Wall: {view['best_ask_wall'] or '--'}"
             )
         print()
 
-        # Asks (implied from opposite-side bids)
-        other = self.no if side == "yes" else self.yes
-        other_sorted = self._sorted_levels(other)[:depth]
-        print(f"  -- {label} Asks --")
-        for price, qty in reversed(other_sorted):
-            ask_price = Decimal("1.00") - Decimal(price)
-            marker = ""
-            if wall_threshold is not None and Decimal(qty) >= Decimal(str(wall_threshold)):
-                marker = "  <WALL>"
+        print(f"  -- {view['label']} Asks --")
+        for row in view["asks"]:
+            marker = "  <WALL>" if row["is_wall"] else ""
             print(
-                f"    {self._fmt_price(ask_price):>4}  "
-                f"{self._fmt_qty(qty):>10} contracts{marker}"
+                f"    {row['price']:>4}  {row['qty']:>10} contracts{marker}"
             )
 
         print(f"  {'-' * 36}")
 
-        # Bids (own-side)
-        own = self.yes if side == "yes" else self.no
-        own_sorted = self._sorted_levels(own)[:depth]
-        print(f"  -- {label} Bids --")
-        for price, qty in own_sorted:
-            marker = ""
-            if wall_threshold is not None and Decimal(qty) >= Decimal(str(wall_threshold)):
-                marker = "  <WALL>"
+        print(f"  -- {view['label']} Bids --")
+        for row in view["bids"]:
+            marker = "  <WALL>" if row["is_wall"] else ""
             print(
-                f"    {self._fmt_price(Decimal(price)):>4}  "
-                f"{self._fmt_qty(qty):>10} contracts{marker}"
+                f"    {row['price']:>4}  {row['qty']:>10} contracts{marker}"
             )
         print()

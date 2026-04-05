@@ -11,7 +11,7 @@ keep-ipynb: false
 ---
 
 How to use the `kalshi_trades` package for REST queries, WebSocket streaming,
-and the live order-book CLI.
+the live order-book CLI, and the multi-market browser dashboard.
 
 ---
 
@@ -379,6 +379,50 @@ python -m kalshi_trades TICKER --debug
 # Via installed entry point
 kalshi-watch TICKER --env prod
 ```
+
+---
+
+## CLI – Multi-Market Browser Dashboard
+
+```{bash}
+#| label: cli-dashboard
+#| eval: false
+# Watch your current positions and resting orders
+kalshi-view --env prod
+
+# Watch specific markets
+kalshi-view TICKER-A TICKER-B
+
+# Force every card to start in YES-only mode
+kalshi-view TICKER-A TICKER-B --side yes
+
+# Production, custom depth, do not auto-open the browser
+kalshi-view TICKER-A TICKER-B --env prod --depth 12 --no-open
+```
+
+The dashboard reuses the same `OrderBook` and `KalshiWebSocket` logic as the
+terminal watcher, but serves a local page so multiple markets can be watched
+at once. If no tickers are provided, it automatically watches markets where
+your portfolio currently has a non-zero position, then adds any tickers with
+resting orders.
+
+Each card now supports independent `YES`, `NO`, and `BOTH` modes, with `BOTH`
+as the default. The browser UI also persists local controls for:
+
+- hiding and reordering watchers
+- pinning a primary watcher
+- sorting by `Edge`, `Spread`, or `Imbalance`
+- compact scan mode
+- alert chips for abrupt spread widening or wall shifts
+
+The most useful per-card trading signals are:
+
+- `Edge Vs Mid` – whether last trade is stretched away from the current book midpoint
+- `Depth 5¢` – near-touch liquidity on your side versus the opposite side
+- `Imbalance` – top-of-book resting pressure
+
+Use `--no-open` when you want the dashboard to stay in Positron Viewer instead
+of auto-opening the external browser.
 
 ---
 

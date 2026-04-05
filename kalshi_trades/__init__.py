@@ -10,6 +10,8 @@ Provides:
       and deltas, with spread/imbalance/wall analytics.
     - KalshiWebSocket: Async WebSocket client for real-time streaming across
       all Kalshi channels.
+    - dashboard: Local multi-market browser dashboard served via
+      ``kalshi-view`` or ``python -m kalshi_trades.dashboard``.
     - Config: Environment-aware configuration (prod / demo).
 """
 

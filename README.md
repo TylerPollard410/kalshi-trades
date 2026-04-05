@@ -1,6 +1,7 @@
-├── watcher.py       # CLI entry point (live order-book display)
-└── strategy.py      # Imbalance-based strategy loop (script or import)
-```Kalshi](https://kalshi.com) prediction-market REST API and WebSocket streaming.
+# kalshi-trades
+
+Python package for the [Kalshi](https://kalshi.com) prediction-market REST API
+and WebSocket streaming.
 
 [![Render USAGE](https://github.com/tylerpollard410/kalshi-trades/actions/workflows/render-usage.yml/badge.svg)](https://github.com/tylerpollard410/kalshi-trades/actions/workflows/render-usage.yml)
 
@@ -16,13 +17,14 @@ uv pip install -e .
 uv pip install -e ".[viz,sdk]"
 ```
 
-Requires Python ≥ 3.13.
+Requires Python >= 3.13.
 
 ---
 
 ## Credentials
 
-Copy `.env.example` to `.env` (prod) or `.env.demo` (demo) and fill in your values:
+Copy `.env.example` to `.env` (prod) or `.env.demo` (demo) and fill in your
+values:
 
 ```
 KALSHI_API_KEY_ID=your-api-key-id
@@ -57,8 +59,8 @@ credentials are set:
 ```python
 client = KalshiClient(Config(env="prod"))  # loads .env automatically
 
-balance  = client.get_balance()
-orders   = client.get_orders(status="resting")
+balance = client.get_balance()
+orders = client.get_orders(status="resting")
 positions = client.get_positions()
 ```
 
@@ -68,7 +70,7 @@ positions = client.get_positions()
 
 | Document | Description |
 |----------|-------------|
-| [USAGE.md](USAGE.md) | Full usage guide — REST, WebSocket, pagination, CLI |
+| [USAGE.md](USAGE.md) | Full usage guide - REST, WebSocket, pagination, CLI |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Package design and what changed from the original layout |
 
 ---
@@ -78,7 +80,22 @@ positions = client.get_positions()
 ```bash
 # Live order-book watcher (streams via WebSocket)
 kalshi-watch KXBTC-26MAR2106-T80199.99
+
+# Multi-market browser dashboard from your current positions or resting orders
+kalshi-view --env prod
+
+# Multi-market browser dashboard for specific markets
+kalshi-view KXBTC-26MAR2106-T80199.99 KXBTC-26MAR2106-B80000
+
+# Keep the app in Positron Viewer or open the URL manually
+kalshi-view --env prod --no-open
 ```
+
+The dashboard defaults each card to `BOTH` mode and lets you switch any card
+independently between `YES`, `NO`, and `BOTH`. It also supports local watchlist
+controls for hiding markets, reordering cards, pinning a primary watcher,
+compact scan mode, sorting by `Edge`, `Spread`, or `Imbalance`, and alert chips
+for spread widening or wall shifts.
 
 ---
 
@@ -87,12 +104,14 @@ kalshi-watch KXBTC-26MAR2106-T80199.99
 ```
 kalshi_trades/
 ├── __init__.py      # Public API re-exports
-├── __main__.py      # python -m kalshi_trades → watcher CLI
+├── __main__.py      # python -m kalshi_trades -> watcher CLI
 ├── config.py        # Environment-aware configuration (prod / demo)
 ├── auth.py          # RSA-PSS request signing
 ├── client.py        # Synchronous REST client
+├── dashboard.py     # Local browser dashboard for multiple markets
 ├── models.py        # Typed dataclass models
 ├── orderbook.py     # Local order book state + analytics
 ├── websocket.py     # Async WebSocket client
-└── watcher.py       # CLI entry point
+├── watcher.py       # CLI entry point (live order-book display)
+└── strategy.py      # Imbalance-based strategy loop (script or import)
 ```

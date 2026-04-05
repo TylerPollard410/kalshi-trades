@@ -24,4 +24,5 @@ include = ["kalshi_trades*"]
 
 [project.scripts]
 kalshi-watch = "kalshi_trades.watcher:cli"
+kalshi-view = "kalshi_trades.dashboard:cli"
 kalshi-strategy = "kalshi_trades.strategy:cli"

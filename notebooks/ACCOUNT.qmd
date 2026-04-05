@@ -1,0 +1,495 @@
+---
+title: "Account Analysis"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    embed-resources: true
+execute:
+  echo: true
+  warning: false
+---
+
+```{python}
+#| label: setup
+import re
+import itertools
+import polars as pl
+import plotly.express as px
+import plotly.graph_objects as go
+from kalshi_trades import Config, KalshiClient
+from kalshi_trades.models import Balance, Position, Order, Fill
+
+client = KalshiClient(Config(env="prod"))
+
+# --- Ticker label helpers ------------------------------------------------
+SERIES_LABELS = {
+    "KXNBASPREAD":    "NBA Spread",
+    "KXNCAAMBSPREAD": "NCAAB Spread",
+    "KXNCAAMBGAME":   "NCAAB Game",
+    "KXKBLGAME":      "KBL Game",
+    "KXGRAMSOTY":     "Grammy SOTY",
+    "KXGRAMROTY":     "Grammy ROTY",
+    "KXMVESPORTSMULTIGAMEEXTENDED": "MV Esports",
+    "KXMVENFLSINGLEGAME": "MV NFL",
+    "KXPGATOUR":      "PGA Tour",
+    "KXINDYCARRACE":  "IndyCar",
+}
+
+
+def series_label(ticker: str) -> str:
+    """Map a raw ticker to a readable series name."""
+    m = re.match(r"^(KX[A-Z]+)", ticker)
+    return SERIES_LABELS.get(m.group(1), m.group(1)) if m else ticker
+
+
+def matchup_label(ticker: str) -> str:
+    """Extract the matchup / event portion after the date stamp."""
+    stripped = re.sub(r"^KX[A-Z]+-\d{2}[A-Z]{3}\d+", "", ticker).lstrip("-")
+    if stripped and stripped != ticker:
+        return stripped
+    parts = ticker.split("-", 1)
+    return parts[1] if len(parts) > 1 else ticker
+
+
+def short_label(ticker: str) -> str:
+    return f"{series_label(ticker)}: {matchup_label(ticker)}"
+```
+
+---
+
+## Balance
+
+```{python}
+#| label: balance
+bal = Balance.from_api(client.get_balance())
+{
+    "available":  f"${bal.balance_dollars:.2f}",
+    "portfolio":  f"${bal.portfolio_value_dollars:.2f}",
+    "total":      f"${bal.balance_dollars + bal.portfolio_value_dollars:.2f}",
+}
+```
+
+---
+
+## Positions
+
+```{python}
+#| label: positions-raw
+positions = [
+    Position.from_api(p)
+    for p in client.paginate_positions(count_filter="position")
+]
+len(positions)
+```
+
+```{python}
+#| label: positions-df
+schema = {
+    "ticker":          pl.String,
+    "contracts":       pl.Float64,
+    "realized_pnl":    pl.Float64,
+    "market_exposure": pl.Float64,
+    "total_traded":    pl.Float64,
+    "fees_paid":       pl.Float64,
+    "resting_orders":  pl.Int64,
+}
+
+df_positions = pl.DataFrame(
+    [
+        {
+            "ticker":          p.ticker,
+            "contracts":       float(p.position_fp),
+            "realized_pnl":    float(p.realized_pnl_dollars or 0),
+            "market_exposure": float(p.market_exposure_dollars or 0),
+            "total_traded":    float(p.total_traded_dollars or 0),
+            "fees_paid":       float(p.fees_paid_dollars or 0),
+            "resting_orders":  p.resting_orders_count,
+        }
+        for p in positions
+    ],
+    schema=schema,
+)
+df_positions
+```
+
+```{python}
+#| label: positions-summary
+df_positions.select([
+    pl.col("realized_pnl").sum().alias("total_realized_pnl"),
+    pl.col("fees_paid").sum().alias("total_fees"),
+    pl.col("total_traded").sum().alias("total_traded"),
+    pl.col("market_exposure").sum().alias("total_exposure"),
+])
+```
+
+---
+
+## Order History
+
+```{python}
+#| label: orders-raw
+orders = [Order.from_api(o) for o in client.paginate_orders()]
+len(orders)
+```
+
+```{python}
+#| label: orders-df
+df_orders = pl.DataFrame([
+    {
+        "order_id":     o.order_id,
+        "ticker":       o.ticker,
+        "action":       o.action,
+        "side":         o.side,
+        "type":         o.type,
+        "status":       o.status,
+        "count":        o.count,
+        "yes_price":    o.yes_price,
+        "no_price":     o.no_price,
+        "created_time": o.created_time,
+    }
+    for o in orders
+])
+df_orders
+```
+
+```{python}
+#| label: orders-by-status
+df_orders.group_by("status").agg(pl.len().alias("count")).sort("count", descending=True)
+```
+
+```{python}
+#| label: orders-by-ticker
+df_orders.group_by("ticker").agg(pl.len().alias("orders")).sort("orders", descending=True)
+```
+
+---
+
+## Fill History
+
+```{python}
+#| label: fills-raw
+fills = [Fill.from_api(f) for f in client.paginate_fills()]
+len(fills)
+```
+
+```{python}
+#| label: fills-df
+df_fills = pl.DataFrame([
+    {
+        "fill_id":      f.fill_id,
+        "ticker":       f.ticker,
+        "action":       f.action,
+        "side":         f.side,
+        "contracts":    float(f.count_fp),
+        "yes_price":    float(f.yes_price_dollars or 0),
+        "no_price":     float(f.no_price_dollars or 0),
+        "fee":          float(f.fee_cost or 0),
+        "is_taker":     f.is_taker,
+        "created_time": f.created_time,
+    }
+    for f in fills
+]).with_columns([
+    pl.col("created_time").dt.convert_time_zone("America/New_York").dt.date().alias("date"),
+    pl.col("ticker").map_elements(series_label, return_dtype=pl.String).alias("series"),
+    pl.col("ticker").map_elements(short_label, return_dtype=pl.String).alias("market"),
+    (pl.col("contracts") * pl.col("yes_price")).alias("capital"),
+    pl.when(pl.col("is_taker")).then(pl.lit("Taker")).otherwise(pl.lit("Maker")).alias("role"),
+])
+df_fills
+```
+
+```{python}
+#| label: fills-summary
+df_fills.select([
+    pl.len().alias("total_fills"),
+    pl.col("contracts").sum().alias("total_contracts"),
+    pl.col("fee").sum().alias("total_fees"),
+    pl.col("capital").sum().alias("total_capital_deployed"),
+    (pl.col("fee").sum() / pl.col("capital").sum() * 100).alias("avg_fee_pct"),
+])
+```
+
+```{python}
+#| label: fills-by-ticker
+df_fills.group_by("ticker").agg([
+    pl.len().alias("fills"),
+    pl.col("contracts").sum().alias("contracts"),
+    pl.col("fee").sum().alias("fees"),
+]).sort("fills", descending=True)
+```
+
+---
+
+## Analysis
+
+### Activity Over Time
+
+```{python}
+#| label: activity-over-time
+daily = (
+    df_fills
+    .group_by("date").agg([
+        pl.col("contracts").sum().alias("contracts"),
+        pl.col("fee").sum().alias("fees"),
+        pl.col("capital").sum().alias("capital"),
+        pl.len().alias("fills"),
+    ])
+    .sort("date")
+    .with_columns(pl.col("date").cast(pl.String))
+)
+
+fig = go.Figure()
+fig.add_bar(
+    x=daily["date"].to_list(),
+    y=daily["contracts"].to_list(),
+    name="Contracts",
+    marker_color="#4c78a8",
+    customdata=list(zip(
+        daily["fills"].to_list(),
+        daily["fees"].to_list(),
+        daily["capital"].to_list(),
+    )),
+    hovertemplate=(
+        "<b>%{x}</b><br>"
+        "Contracts: %{y:,}<br>"
+        "Fills: %{customdata[0]}<br>"
+        "Fees: $%{customdata[1]:.2f}<br>"
+        "$ Deployed: $%{customdata[2]:.2f}"
+        "<extra></extra>"
+    ),
+)
+fig.add_scatter(
+    x=daily["date"].to_list(),
+    y=daily["capital"].to_list(),
+    name="$ Deployed",
+    mode="lines+markers",
+    line=dict(color="#e45756", width=2),
+    yaxis="y2",
+    hovertemplate="$ Deployed: $%{y:.2f}<extra></extra>",
+)
+fig.update_layout(
+    title="Daily Activity — Contracts vs $ Deployed",
+    xaxis_title=None,
+    yaxis=dict(title="Contracts"),
+    yaxis2=dict(title="$ Deployed", overlaying="y", side="right", showgrid=False),
+    legend=dict(orientation="h", yanchor="bottom", y=1.02),
+    hovermode="x unified",
+    height=420,
+)
+fig
+```
+
+### Volume by Series
+
+```{python}
+#| label: volume-by-series
+by_series = (
+    df_fills
+    .group_by("series").agg([
+        pl.col("contracts").sum().alias("contracts"),
+        pl.col("fee").sum().alias("fees"),
+        pl.col("capital").sum().alias("capital"),
+        pl.len().alias("fills"),
+    ])
+    .sort("contracts", descending=True)
+)
+
+fig = go.Figure(go.Bar(
+    x=by_series["contracts"].to_list(),
+    y=by_series["series"].to_list(),
+    orientation="h",
+    marker_color="#4c78a8",
+    customdata=list(zip(
+        by_series["fills"].to_list(),
+        by_series["fees"].to_list(),
+        by_series["capital"].to_list(),
+    )),
+    hovertemplate=(
+        "<b>%{y}</b><br>"
+        "Contracts: %{x:,}<br>"
+        "Fills: %{customdata[0]}<br>"
+        "Fees: $%{customdata[1]:.2f}<br>"
+        "$ Deployed: $%{customdata[2]:.2f}"
+        "<extra></extra>"
+    ),
+))
+fig.update_layout(
+    title="Total Volume by Series",
+    xaxis_title="Contracts",
+    yaxis=dict(autorange="reversed"),
+    height=max(350, len(by_series) * 40),
+)
+fig
+```
+
+### Contracts & Fees by Market
+
+```{python}
+#| label: market-breakdown
+by_market = (
+    df_fills
+    .group_by("market").agg([
+        pl.col("contracts").sum().alias("contracts"),
+        pl.col("fee").sum().alias("fees"),
+        pl.col("capital").sum().alias("capital"),
+        pl.len().alias("fills"),
+        (pl.col("fee").sum() / pl.col("capital").sum() * 100).alias("fee_pct"),
+    ])
+    .sort("contracts", descending=True)
+)
+
+fig = go.Figure(go.Bar(
+    x=by_market["contracts"].to_list(),
+    y=by_market["market"].to_list(),
+    orientation="h",
+    marker=dict(
+        color=by_market["fees"].to_list(),
+        colorscale="Blues",
+        colorbar=dict(title="Fees ($)"),
+    ),
+    customdata=list(zip(
+        by_market["fills"].to_list(),
+        by_market["fees"].to_list(),
+        by_market["fee_pct"].to_list(),
+        by_market["capital"].to_list(),
+    )),
+    hovertemplate=(
+        "<b>%{y}</b><br>"
+        "Contracts: %{x:,}<br>"
+        "Fills: %{customdata[0]}<br>"
+        "Fees: $%{customdata[1]:.2f}<br>"
+        "Fee %%: %{customdata[2]:.2f}%%<br>"
+        "$ Deployed: $%{customdata[3]:.2f}"
+        "<extra></extra>"
+    ),
+))
+fig.update_layout(
+    title="Contracts by Market (color = fees paid)",
+    xaxis_title="Contracts",
+    yaxis=dict(autorange="reversed"),
+    height=max(450, len(by_market) * 25),
+)
+fig
+```
+
+### Maker vs Taker
+
+```{python}
+#| label: maker-taker
+role_summary = (
+    df_fills
+    .group_by("role").agg([
+        pl.len().alias("fills"),
+        pl.col("contracts").sum().alias("contracts"),
+        pl.col("fee").sum().alias("fees"),
+        pl.col("capital").sum().alias("capital"),
+    ])
+    .with_columns(
+        (pl.col("fees") / pl.col("capital") * 100).alias("fee_pct")
+    )
+)
+
+colors = {"Maker": "#54a24b", "Taker": "#e45756"}
+fig = go.Figure()
+for row in role_summary.iter_rows(named=True):
+    fig.add_bar(
+        x=[row["role"]],
+        y=[row["fees"]],
+        name=row["role"],
+        marker_color=colors.get(row["role"], "#999"),
+        text=[f"{row['fills']} fills"],
+        textposition="outside",
+        customdata=[[row["contracts"], row["fee_pct"], row["capital"]]],
+        hovertemplate=(
+            "<b>%{x}</b><br>"
+            "Fees: $%{y:.2f}<br>"
+            "Contracts: %{customdata[0]:,}<br>"
+            "Fee %%: %{customdata[1]:.2f}%%<br>"
+            "$ Deployed: $%{customdata[2]:.2f}"
+            "<extra></extra>"
+        ),
+    )
+fig.update_layout(
+    title="Fees Paid by Role",
+    yaxis_title="Total Fees ($)",
+    showlegend=False,
+    height=380,
+)
+fig
+```
+
+### Fee Efficiency by Market
+
+```{python}
+#| label: fee-efficiency
+by_market_sorted = by_market.sort("fee_pct", descending=True)
+
+fig = go.Figure(go.Bar(
+    x=by_market_sorted["fee_pct"].to_list(),
+    y=by_market_sorted["market"].to_list(),
+    orientation="h",
+    marker=dict(
+        color=by_market_sorted["fee_pct"].to_list(),
+        colorscale="Oranges",
+    ),
+    customdata=list(zip(
+        by_market_sorted["fees"].to_list(),
+        by_market_sorted["capital"].to_list(),
+        by_market_sorted["contracts"].to_list(),
+    )),
+    hovertemplate=(
+        "<b>%{y}</b><br>"
+        "Fee %%: %{x:.2f}%%<br>"
+        "Fees: $%{customdata[0]:.2f}<br>"
+        "$ Deployed: $%{customdata[1]:.2f}<br>"
+        "Contracts: %{customdata[2]:,}"
+        "<extra></extra>"
+    ),
+))
+fig.update_layout(
+    title="Fee Cost as % of Capital Deployed — lower is better",
+    xaxis_title="Fee %",
+    yaxis=dict(autorange="reversed"),
+    height=max(450, len(by_market_sorted) * 25),
+)
+fig
+```
+
+### Buy vs Sell
+
+```{python}
+#| label: buy-vs-sell
+action_summary = (
+    df_fills
+    .group_by("action").agg([
+        pl.len().alias("fills"),
+        pl.col("contracts").sum().alias("contracts"),
+        pl.col("fee").sum().alias("fees"),
+        pl.col("capital").sum().alias("capital"),
+    ])
+)
+
+fig = go.Figure(go.Pie(
+    labels=action_summary["action"].to_list(),
+    values=action_summary["contracts"].to_list(),
+    marker=dict(colors=["#4c78a8", "#f58518"]),
+    hole=0.4,
+    customdata=list(zip(
+        action_summary["fills"].to_list(),
+        action_summary["fees"].to_list(),
+        action_summary["capital"].to_list(),
+    )),
+    hovertemplate=(
+        "<b>%{label}</b><br>"
+        "Contracts: %{value:,}<br>"
+        "Fills: %{customdata[0]}<br>"
+        "Fees: $%{customdata[1]:.2f}<br>"
+        "$ Deployed: $%{customdata[2]:.2f}"
+        "<extra></extra>"
+    ),
+))
+fig.update_layout(title="Buy vs Sell — Share of Contracts")
+fig
+```

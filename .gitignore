@@ -40,9 +40,15 @@ uv.lock
 **/.ipynb_checkpoints/
 
 # Legacy / scratch files (kept locally, not part of the package)
-examples/
-web/
+_examples/
+_web/
+pykalshi/
 march_analyzer.py
 order_book.py
 watcher.py
 /.quarto/
+
+# Notebook rendered output
+notebooks/*_files/
+notebooks/*.html
+notebooks/*.quarto_ipynb*
